@@ -6,6 +6,7 @@ TOKEN = '8981532484:AAGe0CuTyI5W6THRjcz6SkE5-9ao4Jf-C5Y'
 CHANNEL_ID = "@NexusXTOP"
 bot = telebot.TeleBot(TOKEN)
 
+# دیتابیس
 conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, inviter INTEGER)')
@@ -42,9 +43,9 @@ def start(message):
     
     if not check_membership(user_id):
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("✅ عضویت در کانال NexusXTOP", url="https://t.me/NexusXTOP"))
-        markup.add(types.InlineKeyboardButton("🔄 عضو شدم (بررسی)", callback_data="check_join"))
-        bot.send_message(message.chat.id, "⚠️ **برای استفاده از ربات ابتدا در کانال ما عضو شوید:**\n@NexusXTOP", reply_markup=markup)
+        markup.add(types.InlineKeyboardButton("✅ عضویت در @NexusXTOP", url="https://t.me/NexusXTOP"))
+        markup.add(types.InlineKeyboardButton("🔄 عضو شدم", callback_data="check_join"))
+        bot.send_message(message.chat.id, "⚠️ **ابتدا در کانال ما عضو شوید:**\n@NexusXTOP", reply_markup=markup)
     else:
         show_menu(message.chat.id)
 
@@ -58,8 +59,9 @@ def check_join(call):
 
 def show_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    # این همان ۴ گزینه‌ای است که خواستی:
     markup.add("🌐 پنل V2Ray", "🔥 وایرگارد پینگ ۲۰", "⚡️ پنل DNS نت ملی", "🛡 OpenVPN")
-    bot.send_message(chat_id, "✅ به پنل خدمات خوش آمدید. ۳ دعوت نیاز است:", reply_markup=markup)
+    bot.send_message(chat_id, "✅ به پنل خدمات خوش آمدید. هر سرویس نیاز به ۳ دعوت دارد:", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: True)
 def handle_menu(message):
@@ -74,9 +76,6 @@ def handle_menu(message):
             conn.commit()
         else:
             needed = 3 - invites
-            bot.send_message(message.chat.id, 
-                f"❌ شما {invites} نفر را دعوت کردید.\n"
-                f"برای دریافت {message.text}، باید {needed} نفر دیگر را دعوت کنید.\n\n"
-                f"🔗 لینک اختصاصی شما:\nhttps://t.me/PUbgNexusX_bot?start=inv_{user_id}")
+            bot.send_message(message.chat.id, f"❌ شما {invites} دعوت دارید.\nبرای دریافت {message.text} باید {needed} نفر دیگر دعوت کنید.\n\n🔗 لینک اختصاصی شما:\nhttps://t.me/PUbgNexusX_bot?start=inv_{user_id}")
 
 bot.infinity_polling()
