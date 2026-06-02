@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 import sqlite3
 
-TOKEN = '8981532484:AAGe0CuTyI5W6THRjcz6SkE5-9ao4Jf-C5Y'
+TOKEN = '8981532484:AAG1Z2o1ZJ6QWnRUUpAUz87hbnSwmjBs064'
 CHANNEL_ID = "@NexusXTOP"
 bot = telebot.TeleBot(TOKEN)
 
