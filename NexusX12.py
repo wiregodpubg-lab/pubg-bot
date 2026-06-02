@@ -1,16 +1,15 @@
 import telebot
 from telebot import types
 import sqlite3
-import random
 
 TOKEN = '8981532484:AAGe0CuTyI5W6THRjcz6SkE5-9ao4Jf-C5Y'
 CHANNEL_ID = "@NexusXTOP"
 bot = telebot.TeleBot(TOKEN)
 
-# دیتابیس
 conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, inviter INTEGER)')
+cursor.execute('CREATE TABLE IF NOT EXISTS inv_count (id INTEGER PRIMARY KEY, count INTEGER)')
 conn.commit()
 
 def check_membership(user_id):
@@ -19,25 +18,33 @@ def check_membership(user_id):
         return member.status in ['member', 'administrator', 'creator']
     except: return False
 
-def get_count(user_id):
-    cursor.execute('SELECT COUNT(*) FROM users WHERE inviter = ?', (user_id,))
-    return cursor.fetchone()[0]
+def get_invites(user_id):
+    cursor.execute('SELECT count FROM inv_count WHERE id = ?', (user_id,))
+    res = cursor.fetchone()
+    return res[0] if res else 0
+
+def add_invite(inviter_id):
+    cursor.execute('INSERT OR IGNORE INTO inv_count (id, count) VALUES (?, 0)', (inviter_id,))
+    cursor.execute('UPDATE inv_count SET count = count + 1 WHERE id = ?', (inviter_id,))
+    conn.commit()
 
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
-    # ثبت دعوت کننده (اگر آیدی داشت)
     if 'inv_' in message.text:
         inviter_id = int(message.text.split('inv_')[1])
         if inviter_id != user_id:
-            cursor.execute('INSERT OR IGNORE INTO users (id, inviter) VALUES (?, ?)', (user_id, inviter_id))
-            conn.commit()
+            cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+            if not cursor.fetchone():
+                cursor.execute('INSERT INTO users (id, inviter) VALUES (?, ?)', (user_id, inviter_id))
+                add_invite(inviter_id)
+                conn.commit()
     
     if not check_membership(user_id):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("✅ عضویت در کانال", url="https://t.me/NexusXTOP"))
-        markup.add(types.InlineKeyboardButton("🔄 عضو شدم (تایید)", callback_data="check_join"))
-        bot.send_message(message.chat.id, "⚠️ **برای استفاده از ربات باید در کانال ما عضو باشید:**\n@NexusXTOP", reply_markup=markup)
+        markup.add(types.InlineKeyboardButton("🔄 عضو شدم", callback_data="check_join"))
+        bot.send_message(message.chat.id, "⚠️ **ابتدا در کانال ما عضو شوید:**\n@NexusXTOP", reply_markup=markup)
     else:
         show_menu(message.chat.id)
 
@@ -51,30 +58,25 @@ def check_join(call):
 
 def show_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("🔥 وایرگارد", "🌐 پنل V2Ray", "⚡️ دی‌ان‌اس پینگ ۲۰", "📊 لیدربورد", "👤 پروفایل")
-    bot.send_message(chat_id, "✅ به منوی اصلی خوش آمدید، از دکمه‌های زیر استفاده کنید:", reply_markup=markup)
+    markup.add("🌐 پنل V2Ray", "🔥 وایرگارد پینگ ۲۰", "⚡️ پنل DNS نت ملی", "🛡 OpenVPN")
+    bot.send_message(chat_id, "✅ به پنل خدمات خوش آمدید. هر سرویس نیاز به ۳ دعوت دارد:", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: True)
 def handle_menu(message):
     user_id = message.from_user.id
     if not check_membership(user_id): return start(message)
     
-    count = get_count(user_id)
-    
-    if message.text in ["🔥 وایرگارد", "🌐 پنل V2Ray", "⚡️ دی‌ان‌اس پینگ ۲۰"]:
-        if count >= 3:
-            bot.send_message(message.chat.id, f"🎁 تبریک! اینم سرویس درخواستی شما:\n`لینک_اختصاصی_شما`", parse_mode='Markdown')
+    if message.text in ["🌐 پنل V2Ray", "🔥 وایرگارد پینگ ۲۰", "⚡️ پنل DNS نت ملی", "🛡 OpenVPN"]:
+        invites = get_invites(user_id)
+        if invites >= 3:
+            bot.send_message(message.chat.id, f"✅ تبریک! اینم سرویس درخواستی شما برای {message.text}:\n`لینک_اختصاصی_سرویس_شما`\n\nتعداد دعوت‌های شما صفر شد.", parse_mode='Markdown')
+            cursor.execute('UPDATE inv_count SET count = 0 WHERE id = ?', (user_id,))
+            conn.commit()
         else:
-            needed = 3 - count
-            bot.send_message(message.chat.id, f"❌ **دسترسی محدود!**\nشما {count} نفر دعوت کردید.\n\nبرای دریافت این سرویس باید **{needed} نفر دیگه** رو دعوت کنید.\n\nلینک اختصاصی خودتون رو برای دوستانتون بفرستید تا عضو بشن و امتیازتون کامل شه!", parse_mode='Markdown')
-    
-    elif message.text == "👤 پروفایل":
-        bot.send_message(message.chat.id, f"👤 **اطلاعات شما:**\nتعداد دعوت موفق: {count}\n\n🔗 لینک دعوت شما:\nhttps://t.me/PUbgNexusX_bot?start=inv_{user_id}")
-
-    elif message.text == "📊 لیدربورد":
-        cursor.execute('SELECT inviter, COUNT(*) as c FROM users WHERE inviter != 0 GROUP BY inviter ORDER BY c DESC LIMIT 5')
-        top = cursor.fetchall()
-        text = "🏆 **لیدربورد خفن‌ترین دعوت‌کنندگان:**\n\n" + "\n".join([f"{i+1}. کاربر {u[0]} با {u[1]} دعوت" for i, u in enumerate(top)])
-        bot.send_message(message.chat.id, text)
+            needed = 3 - invites
+            bot.send_message(message.chat.id, 
+                f"❌ شما {invites} نفر را دعوت کردید.\n"
+                f"برای دریافت {message.text}، باید {needed} نفر دیگر را هم دعوت کنید.\n\n"
+                f"🔗 لینک اختصاصی شما:\nhttps://t.me/PUbgNexusX_bot?start=inv_{user_id}")
 
 bot.infinity_polling()
