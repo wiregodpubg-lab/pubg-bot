@@ -10,7 +10,7 @@ bot = telebot.TeleBot(TOKEN)
 # دیتابیس
 conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
-cursor.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, inviter INTEGER, points INTEGER DEFAULT 0, level INTEGER DEFAULT 1)')
+cursor.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, inviter INTEGER)')
 conn.commit()
 
 def check_membership(user_id):
@@ -22,46 +22,47 @@ def check_membership(user_id):
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
-    args = message.text.split()
-    inviter = int(args[1].replace("inv_", "")) if len(args) > 1 and "inv_" in args[1] else 0
-    
-    cursor.execute('INSERT OR IGNORE INTO users (id, inviter) VALUES (?, ?)', (user_id, inviter))
-    conn.commit()
-
     if not check_membership(user_id):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("✅ عضویت در کانال", url="https://t.me/NexusXTOP"))
-        bot.send_message(message.chat.id, "❌ ابتدا عضو کانال شوید.", reply_markup=markup)
-        return
+        markup.add(types.InlineKeyboardButton("🔄 تایید عضویت", callback_data="check_join"))
+        bot.send_message(message.chat.id, "⚠️ **ابتدا در کانال ما عضو شوید**", reply_markup=markup)
+    else:
+        show_main_menu(message.chat.id)
 
+@bot.callback_query_handler(func=lambda call: call.data == "check_join")
+def callback_join(call):
+    if check_membership(call.from_user.id):
+        bot.answer_callback_query(call.id, "✅ عضویت تایید شد!")
+        show_main_menu(call.message.chat.id)
+    else:
+        bot.answer_callback_query(call.id, "❌ هنوز عضو نشدید!", show_alert=True)
+
+def show_main_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("🎁 جوایز مرحله‌ای", "📊 لیدربورد", "🎡 چرخونه شانس", "👤 پروفایل")
-    bot.send_message(message.chat.id, "خوش آمدید! از منو استفاده کنید.", reply_markup=markup)
+    markup.add("🔥 وایرگارد", "🌐 پنل V2Ray", "🎁 جوایز مرحله‌ای", "📊 لیدربورد", "🎡 چرخونه شانس", "👤 پروفایل")
+    bot.send_message(chat_id, "✅ **عضویت تایید شد!**\nبه منوی اصلی خوش آمدید:", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: True)
 def handle_menu(message):
     user_id = message.from_user.id
-    
-    if message.text == "📊 لیدربورد":
-        cursor.execute('SELECT id, COUNT(*) as count FROM users GROUP BY inviter ORDER BY count DESC LIMIT 5')
+    if not check_membership(user_id):
+        return start(message)
+
+    if message.text == "🔥 وایرگارد":
+        bot.send_message(message.chat.id, "سرویس وایرگارد شما:\n`لینک_وایرگارد`", parse_mode='Markdown')
+    elif message.text == "🌐 پنل V2Ray":
+        bot.send_message(message.chat.id, "سرویس پنل V2Ray شما:\n`لینک_ویتوری`", parse_mode='Markdown')
+    elif message.text == "📊 لیدربورد":
+        cursor.execute('SELECT inviter, COUNT(*) as count FROM users WHERE inviter != 0 GROUP BY inviter ORDER BY count DESC LIMIT 5')
         top = cursor.fetchall()
         text = "🏆 **لیدربورد دعوت‌کنندگان:**\n\n" + "\n".join([f"{i+1}. کاربر {u[0]}: {u[1]} دعوت" for i, u in enumerate(top)])
         bot.send_message(message.chat.id, text, parse_mode='Markdown')
-
     elif message.text == "🎡 چرخونه شانس":
-        reward = random.choice(["+1 دعوت", "هیچ", "+2 دعوت", "شانس مجدد"])
-        bot.send_message(message.chat.id, f"🎡 نتیجه چرخونه: {reward}")
-
-    elif message.text == "🎁 جوایز مرحله‌ای":
-        cursor.execute('SELECT COUNT(*) FROM users WHERE inviter = ?', (user_id,))
-        count = cursor.fetchone()[0]
-        msg = f"شما {count} دعوت دارید.\nجوایز: ۳ دعوت (وایرگارد)، ۵ دعوت (پنل)، ۱۰ دعوت (ویژه)، ۲۰ دعوت (اکانت رایگان)."
-        bot.send_message(message.chat.id, msg)
-
+        bot.send_message(message.chat.id, f"🎡 نتیجه چرخونه: {random.choice(['+1 دعوت', 'شانس مجدد', 'هیچ'])}")
     elif message.text == "👤 پروفایل":
         cursor.execute('SELECT COUNT(*) FROM users WHERE inviter = ?', (user_id,))
         count = cursor.fetchone()[0]
-        level = (count // 5) + 1
-        bot.send_message(message.chat.id, f"👤 پروفایل\nتعداد دعوت: {count}\nسطح فعلی: {level}\nلینک: https://t.me/PUbgNexusX_bot?start=inv_{user_id}")
+        bot.send_message(message.chat.id, f"👤 پروفایل\nتعداد دعوت: {count}\nلینک: https://t.me/PUbgNexusX_bot?start=inv_{user_id}")
 
 bot.infinity_polling()
