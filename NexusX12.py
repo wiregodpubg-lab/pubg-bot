@@ -4,7 +4,7 @@ import sqlite3
 
 TOKEN = '8981532484:AAGe0CuTyI5W6THRjcz6SkE5-9ao4Jf-C5Y'
 CHANNEL_ID = "@NexusXTOP"
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(8981532484:AAGe0CuTyI5W6THRjcz6SkE5-9ao4Jf-C5Y)
 
 # دیتابیس
 conn = sqlite3.connect('database.db', check_same_thread=False)
