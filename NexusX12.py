@@ -2,9 +2,10 @@ import telebot
 from telebot import types
 import sqlite3
 
+# توکن و آیدی کانال شما
 TOKEN = '8981532484:AAGe0CuTyI5W6THRjcz6SkE5-9ao4Jf-C5Y'
 CHANNEL_ID = "@NexusXTOP"
-bot = telebot.TeleBot(8981532484:AAGe0CuTyI5W6THRjcz6SkE5-9ao4Jf-C5Y)
+bot = telebot.TeleBot(TOKEN)
 
 # دیتابیس
 conn = sqlite3.connect('database.db', check_same_thread=False)
@@ -12,9 +13,10 @@ cursor = conn.cursor()
 cursor.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, inviter INTEGER)')
 conn.commit()
 
-# لینک‌های واقعی خود را اینجا قرار دهید
-WIREGUARD_LINK = "vless://لینک_وایرگارد_اختصاصی"
-V2RAY_PANEL_LINK = "vless://لینک_پنل_ویتوری_اختصاصی"
+# --- لینک‌های خود را اینجا قرار دهید ---
+WIREGUARD_LINK = "vless://لینک_وایرگارد_اختصاصی_شما"
+V2RAY_PANEL_LINK = "vless://لینک_پنل_ویتوری_شما"
+# -------------------------------------
 
 def check_membership(user_id):
     try:
@@ -39,7 +41,7 @@ def start(message):
     if not check_membership(user_id):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("✅ عضویت در کانال NexusXTOP", url="https://t.me/NexusXTOP"))
-        bot.send_message(message.chat.id, "⚠️ **ابتدا در کانال ما عضو شوید**\n\nبرای دسترسی به سرویس‌ها، عضو کانال زیر شوید و دوباره دستور /start را بزنید:", reply_markup=markup)
+        bot.send_message(message.chat.id, "⚠️ **ابتدا در کانال ما عضو شوید**\n\nبرای دسترسی به سرویس‌ها، عضو کانال ما شوید و دوباره /start را بزنید:", reply_markup=markup)
         return
 
     # منوی اصلی
